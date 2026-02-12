@@ -1,0 +1,143 @@
+# ================================
+# ARES CONFIGURATION FILE
+# ================================
+
+output_report_path: "output"
+# --------------------------------
+# SCAN MODE
+# --------------------------------
+mode:
+  enable_scan: true          # enable or disable the scanning phase
+  #target: "192.168.0.0/24" #"185.127.236.0/24" #from command line
+  n_threads: 3 # to choose the number of parallel scans
+  base_output_raw_path: "output/raw" # base path to store raw scan outputs
+
+  # NMAP
+  launcher_nmap:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100
+    modes:                        # each mode maps to a thread
+      - name: scan-only
+        enable: true
+        description: "Basic host discovery + simple port scan"
+        flags: "-sn"
+        outputpath: "nmap_hostonly.xml"
+        custom_option: ""
+      - name: toptcpport
+        enable: true
+        description: "Top TCP ports scan"
+
+        flags: "-sS --top-ports "
+        outputpath: "nmap_top_tcp_ports.xml"
+        custom_option: ""
+      - name: topudpport
+        enable: false
+        description: "Top UDP ports scan"
+        flags: "-sU --top-ports "
+        outputpath: "nmap_top_udp_ports.xml"
+        custom_option: ""
+      - name: aggressive
+        enable: false
+        description: "Full scan (LOWD)"
+        flags: "-A"
+        output_path: "nmap_full_scan.xml"
+        custom_option: ""
+    flags:
+      - name: no-ping
+        enable: false
+        description: "Treat all hosts as online -- skip host discovery"
+        flags: "-Pn"
+      - name: timing
+        enable: false
+        description: "Set timing template <0-5> (higher is faster)"
+        flags: "-T4"
+  
+  # MASSCAN
+  launcher_masscan:
+    enabled: true                 # enable or disable Masscan module
+    top_ports: 100
+    rate: 1000
+    modes:
+      # --- LOUD / FAST MODES (Discovery) ---
+      - name: top-ports
+        enable: true
+        description: "LOUD: Rapidly find live hosts on top 100 ports"
+        # High rate, top ports only. Good for initial map.
+        flags: "--top-ports --rate 5000" 
+        outputpath: "masscan_top_ports.json"
+        custom_option: ""
+      - name: full-port-blitz
+        enable: false
+        description: "LOUD: Scan all TCP ports (0-65535) on the subnet"
+        # Very noisy, very long. Captures non-standard ports.
+        flags: "-p0-65535 --rate 10000"
+        outputpath: "masscan_full_tcp.json"
+        custom_option: ""
+
+      # --- STEALTHIER MODES (Lower Rate) ---
+      # Masscan is never truly 'stealthy', but we can lower the noise floor.
+      - name: low-and-slow
+        enable: false
+        description: "QUIET: Low rate scan of specific sensitive ports"
+        # Rate 100 is very slow for masscan but safer for firewalls.
+        flags: "-p21,22,23,80,443,445,3389,8080 --rate 100" 
+        outputpath: "masscan_stealth.json"
+        custom_option: ""
+
+      # --- INTELLIGENCE MODES (Rich Data) ---
+      - name: banner-grabber
+        enable: true
+        description: "INFO: Connects to open ports to grab service versions"
+        # --banners establishes a TCP connection (3-way handshake) unlike the default SYN scan.
+        flags: "--top-ports --banners --rate 1000"
+        outputpath: "masscan_banners.json"
+        custom_option: ""
+      - name: udp-exposure
+        enable: false
+        description: "INFO: Scan for common UDP amplifiers (DNS, NTP, SNMP)"
+        # UDP is slow/difficult to scan reliably. Focus on key ports.
+        flags: "-pU:53,U:161,U:123,U:137 --rate 1000"
+        outputpath: "masscan_udp.json"
+        custom_option: ""
+    flags:
+      - name: wait-time
+        enable: false
+        description: "Seconds to wait for responses after scan finishes"
+        flags: "--wait 10"
+      - name: interface
+        enable: false
+        description: "Force specific network interface"
+        flags: "-e eth0"
+      - name: router-mac
+        enable: false
+        description: "Spoof gateway MAC (needed if auto-detect fails)"
+        flags: "--router-mac 66:55:44:33:22:11"
+      - name: source-port
+        enable: false
+        description: "Fix source port (can bypass some stateless firewalls)"
+        flags: "--source-port 61000"
+
+  # SMAP
+  launcher_smap:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100
+    modes:                        # each mode maps to a thread
+      - name: full-port-scan
+        enable: true
+        description: "full port scan"
+        flags: "-p1-65535" # - wildcard for all ports doesn't exist in smap
+        outputpath: "smap_full_port.json"
+        custom_option: ""
+      - name: top-ports
+        enable: true
+        description: "Top TCP ports scan"
+        flags: "--top-ports"
+        outputpath: "smap_top_tcp_ports.json"
+        custom_option: ""
+
+# --------------------------------
+# IMPORT FILE
+# --------------------------------
+import_files:
+  # - "output/raw/<timestamp>_<target>/nmap_top_tcp_ports.xml"  how to import example
+  # - "output/raw/<timestamp>_<target>/nmap_hostonly.xml"  how to import example
