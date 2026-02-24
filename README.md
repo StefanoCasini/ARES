@@ -47,8 +47,8 @@ Ensure the following tools are installed and available in your system `PATH`:
 ### Setup
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/yourusername/ares-framework.git](https://github.com/yourusername/ares-framework.git)
-    cd ares-framework
+    git clone https://github.com/StefanoCasini/ARES.git
+    cd ARES
     ```
 
 2.  **Install Python dependencies:**
@@ -66,33 +66,61 @@ A.R.E.S. relies on a `config.yaml` file to define targets, tool behavior, and ex
 The configuration is divided into `general` settings and `tools` definitions.
 
 ```yaml
-# config.yaml example
+# ================================
+# ARES CONFIGURATION FILE
+# ================================
 
-general:
-  project_name: "Internal_Audit_01"
-  output_directory: "./results"
-  targets: 
-    - "192.168.1.0/24"
-    - "10.0.0.5"
-  max_threads: 4
+output_report_path: "output"
+# --------------------------------
+# SCAN MODE
+# --------------------------------
+mode:
+  enable_scan: true          # enable or disable the scanning phase
+  n_threads: 3 # to choose the number of parallel scans
+  base_output_raw_path: "output/raw" # base path to store raw scan outputs
 
-tools:
-  # Define which tools to run and their arguments
-  nmap:
-    enabled: true
-    arguments: "-sV -O --top-ports 100"
-    output_format: "xml"  # Required for the parser
-  
-  masscan:
-    enabled: true
-    arguments: "--rate=1000 -p80,443,22"
+  # NMAP
+  launcher_nmap:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100
+    modes:                        # each mode maps to a thread
+      .
+      .
+      .
+
+  # MASSCAN
+  launcher_masscan:
+    enabled: true                 # enable or disable Masscan module
+    top_ports: 100
+    rate: 1000
+    modes:
+      .
+      .
+      .
+
+  # SMAP
+  launcher_smap:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100
+    modes:                        # each mode maps to a thread
+      .
+      .
+      .
+
+# --------------------------------
+# IMPORT FILE
+# --------------------------------
+import_files:
+  - "output/raw/<timestamp>_<target>/nmap_top_tcp_ports.xml"  how to import example
 ```
 ## Usage
 
 A.R.E.S. relies on a `config.yaml` file to define targets, tool behavior, and execution parameters. To run the tool, simply point to your configuration file using the CLI.
 
 **Command to run:**
-[INSERISCI QUI IL COMANDO BASH PER LANCIARE IL TOOL]
+```bash
+sudo ares.py <target>
+```
 
 > **Note:** `sudo` privileges are often required because Masscan and Nmap (specifically for OS detection) utilize raw sockets to perform scans.
 
@@ -103,14 +131,51 @@ A.R.E.S. relies on a `config.yaml` file to define targets, tool behavior, and ex
 Below are common configuration scenarios to be defined in `config.yaml`.
 
 ### Scenario A: Fast Discovery (Stealth & Speed)
-In this scenario, **Masscan** is used for high-speed volumetric scanning to quickly identify open ports, while **Smap** provides passive intelligence without touching the target. **Nmap** is disabled to reduce the active footprint and scan duration.
+In this scenario, **Masscan** is used for high-speed volumetric scanning to quickly identify open ports from the top 100 most used tcp ports.
 
-[INSERISCI QUI L'ESEMPIO YAML SCENARIO A]
+```yaml
+launcher_masscan:
+    enabled: true                 # enable or disable Masscan module
+    top_ports: 100
+    rate: 1000
+    modes:
+      # --- LOUD / FAST MODES (Discovery) ---
+      - name: top-ports
+        enable: true
+        description: "LOUD: Rapidly find live hosts on top 100 ports"
+        flags: "--top-ports --rate 5000" 
+        outputpath: "masscan_top_ports.json"
+        custom_option: ""
+```
 
 ### Scenario B: Deep Enumeration
-This profile focuses on detailed service versioning and script scanning. It uses **Nmap** with aggressive flags on specific targets found previously. Masscan is disabled to prioritize precision over speed.
+This profile focuses on detailed service versioning and script scanning. It uses **Nmap** with aggressive flags.
 
-[INSERISCI QUI L'ESEMPIO YAML SCENARIO B]
+```yaml
+ # NMAP
+  launcher_nmap:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100
+    modes:
+    .
+    .
+    .
+    - name: aggressive
+        enable: false
+        description: "Full scan (LOWD)"
+        flags: "-A"
+        output_path: "nmap_full_scan.xml"
+        custom_option: ""
+    flags:
+      - name: no-ping
+        enable: false
+        description: "Treat all hosts as online -- skip host discovery"
+        flags: "-Pn"
+      - name: timing
+        enable: true
+        description: "Set timing template <0-5> (higher is faster)"
+        flags: "-T4"
+```
 
 ---
 
@@ -125,7 +190,50 @@ The system revolves around two main interfaces:
 ### Directory Structure
 The project follows a clean separation of concerns:
 
-[INSERISCI QUI L'ALBERO DELLE DIRECTORY]
+```plaintext
+
+├── ares.py
+├── config.yml
+├── __init__.py
+├── LICENSE
+├── module
+│   ├── base_generator.py
+│   ├── base_parser.py
+│   ├── __init__.py
+│   ├── launcher.py
+│   ├── masscan
+│   │   ├── __init__.py
+│   │   ├── masscan_generator.py
+│   │   └── masscan_parser.py
+│   ├── merger.py
+│   ├── nmap
+│   │   ├── __init__.py
+│   │   ├── nmap_generator.py
+│   │   ├── nmap_parser.py
+│   │   └── nmap_utils.py
+│   ├── parser.py
+│   └── smap
+│       ├── __init__.py
+│       ├── smap_generator.py
+│       └── smap_parser.py
+├── output
+│   └── raw
+├── README.md
+├── test
+│   ├── __init__.py
+│   ├── nmap_parser_result
+│   ├── test_masscan_parser.py
+│   ├── test_merger_duplicates.py
+│   ├── test_nmap_parser.py
+│   ├── test_smap_generator.py
+│   └── test_smap_parser.py
+└── utils
+    ├── helpers.py
+    ├── __init__.py
+    ├── permission.py
+    └── ui.py
+
+```
 
 ---
 
@@ -134,21 +242,185 @@ The project follows a clean separation of concerns:
 To add support for a new tool (e.g., `Nuclei`, `RustScan`, or a custom script), follow these three steps:
 
 ### 1. Create the Command Generator
-Create a new class in `src/modules/generators/` implementing the base generator interface. This class defines how the command line string is constructed.
+Create a new folder in `src/modules/<new tools>/<new_generator.py>` implementing the base generator interface. This class defines how the command line string is constructed. Here's an example of nmap_generator.py
 
-[INSERISCI QUI IL CODICE PYTHON DEL GENERATOR]
+```python
+from ..base_generator import CommandGenerator
+
+class NmapGenerator(CommandGenerator):
+    def generate_commands(self, config: dict, target) -> list:
+        commands_struct = []
+        
+        for sub_mode in config.get("modes", []):
+            if sub_mode.get("enable"):
+                flags = sub_mode.get("flags", "")
+                output_file = sub_mode.get("outputpath", "nmap.xml")
+                full_output_path = self.output_dir / output_file
+
+                if "--top-ports" in flags:
+                    top_ports = sub_mode.get("top_ports", 100)
+                    flags = flags.replace("--top-ports", f"--top-ports {top_ports}")
+                    
+                cmd = f"sudo nmap {flags} -oX {full_output_path} {target}"
+                commands_struct.append(
+                    {
+                        "command": cmd,
+                        "output_file": full_output_path,
+                        "tool_name": "nmap"
+                    }
+                )
+        
+        return commands_struct
+```
 
 ### 2. Create the Parser
-Create a new class in `src/modules/parsers/` to handle the output file. This class must read the raw file produced by the tool and map it to the internal `Host` object list.
+Create a new class in `src/modules/<new tools>/<new_generator.py>` to handle the output file. This class must read the raw file produced by the tool and map it to the internal `Host` object list. Here's an example of masscan_parser.py
 
-[INSERISCI QUI IL CODICE PYTHON DEL PARSER]
+```python
+class MasscanParser(BaseParser):
+    @staticmethod
+    def can_handle(file_path: Path) -> bool:
+        if file_path.suffix != ".json":
+            return False
+        try:
+            if "masscan" in file_path.name:
+                return True
+            # Fallback: Peek content
+            with open(file_path, 'r') as f:
+                content_start = f.read(50)
+            # Masscan raw output is usually a list [...]
+            # Your wrapped output starts with { "command": ... }
+            if "masscan" in content_start: 
+                return True
+        except Exception:
+            return False
+        return False
 
-### 3. Register the Module
-Finally, add your new classes to the `Registry` (typically found in `src/core/registry.py` or `main.py`). This tells the orchestrator that the new tool exists and maps the name used in the config file to the correct classes.
+    def parse(self, file_path: Path) -> dict:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = json.load(f)
+        except Exception:
+            # Return empty structure if file is corrupted or empty
+            return {"tool_name": "masscan", "command": "", "data": {}}
+        
+        # 1. Extract Meta-Info
+        command = content.get('command', 'unknown')
+        tool_name = "masscan"
+        raw_data_list = content.get('data', [])  # assuming data is under 'data' key or is the root
 
-[INSERISCI QUI IL CODICE PYTHON DI REGISTRAZIONE]
+        data_dict = {}
 
+        for entry in raw_data_list:
+            ip = entry.get("ip")
+            if not ip:
+                continue
+            if ip not in data_dict:
+                data_dict[ip] = {
+                    "ports": {},
+                    "hostnames": [],
+                    "os": [],
+                    "cpes": []
+                }
+
+            host_record = data_dict[ip]
+            raw_ports = entry.get("ports", [])
+
+            for port_data in raw_ports:
+                port_id = str(port_data.get("port"))
+                protocol = port_data.get("proto", "tcp")
+                key = f"{port_id}/{protocol}"
+
+                if key not in host_record["ports"]:
+                    host_record["ports"][key] = {
+                        "state": "closed",
+                        "service": "unknown",
+                        "banner": None,
+                        "source": tool_name,
+                        "ttl": None,
+                        "reason": None
+                    }                
+                existing_port_data = host_record["ports"][key]
+
+                # Extract new data
+                new_status = port_data.get("status", None)
+                new_ttl = port_data.get("ttl", None)
+                new_reason = port_data.get("reason", None)
+                new_service_obj = port_data.get("service", {})
+                new_banner = None
+                new_service_name = None
+
+                if isinstance(new_service_obj, dict):
+                    new_banner = new_service_obj.get("banner", None)
+                    new_service_name = new_service_obj.get("name", "unknown")
+                elif isinstance(new_service_obj, str):
+                    new_service_name = new_service_obj
+
+                # Merge logic
+                if new_status and new_status == "open":
+                    existing_port_data["state"] = new_status
+                if new_ttl is not None:
+                    existing_port_data["ttl"] = new_ttl
+                if new_reason is not None:
+                    existing_port_data["reason"] = new_reason
+                if new_banner:
+                    existing_port_data["banner"] = new_banner
+                if new_service_name and new_service_name != "unknown":
+                    existing_port_data["service"] = new_service_name
+                
+                if tool_name not in existing_port_data["source"]:
+                    existing_port_data["source"] += f", {tool_name}"
+
+        parsed_data = {
+            "tool_name": tool_name,
+            "command": command,
+            "data": data_dict
+        }
+        return parsed_data
+
+```
+
+### 3. Register the Modules
+Finallydd your new generator classes to the `GENERATOR_REGISTRY` (found in `src/module/launcher.py`) and your parser class to the `PARSER_REGISTRY` (found in `src/module/parser.py`). This tells the orchestrator that the new tool exists and maps the name used in the config file to the correct classes.
+
+```python 
+# Registry of available generator classes
+GENERATOR_REGISTRY = {
+    "launcher_nmap": NmapGenerator,
+    "launcher_masscan": MasscanGenerator,
+    "launcher_smap": SmapGenerator
+}
+```
+
+```python
+PARSER_REGISTRY = {
+    "parser_nmap": NmapParser,
+    "parser_masscan": MasscanParser,
+    "parser_smap": SmapParser
+}
+```
 Once registered, you can simply add the new tool name to your `config.yaml` tools section, and the orchestrator will handle the execution and parsing automatically.
+
+```yaml
+launcher_<new_tool>:
+    enabled: true                 # enable or disable Nmap module
+    top_port_range: 100  #if needed, i use that to set the range for the command that need port range
+    modes:
+    .
+    .
+    .
+    - name: <mode1>
+        enable: false
+        description: "Description..."
+        flags: "<tool flag related to this mode>"
+        output_path: "<mode_output_file_name>"
+        custom_option: ""
+    flags:
+      - name: <custom_option name>
+        enable: false
+        description: "Description..."
+        flags: "<flag related to this mode>"
+```
 
 ##  Legal & Attribution
 

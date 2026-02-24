@@ -26,7 +26,6 @@ mode:
       - name: toptcpport
         enable: true
         description: "Top TCP ports scan"
-
         flags: "-sS --top-ports "
         outputpath: "nmap_top_tcp_ports.xml"
         custom_option: ""

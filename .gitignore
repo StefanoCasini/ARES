@@ -1,3 +1,12 @@
+# Directories to ignore, relative to root of repository
+output/*
+!output/raw/
+output/raw/*
+!output/.gitkeep
+!output/raw/.gitkeep
+
+structs/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
