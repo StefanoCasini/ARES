@@ -1,5 +1,7 @@
 import ipaddress
 
+from module.dtos.ParsedDataDTO import ParsedDataDTO
+
 def merge_tools(shodan_map=None, nmap_map=None, mass_map=None, smap_map=None, command=None):
     """
     Merge scan maps from nmap/smap, masscan, and networksherlock.
@@ -97,16 +99,17 @@ def _prune_weak_siblings(existing_entries, new_entry):
             (_same_entry(entry, new_entry)):
             existing_entries.remove(entry)
 
-def merge_all(parser_results_list: list):
+def merge_all(parser_results_list: list[ParsedDataDTO]):
     print(f"\n--- Merging {len(parser_results_list)} scan files ---")
 
     merged_db = {}
     command_set = set()
     for scan_file_result in parser_results_list:
-        tool_name = scan_file_result.get("tool_name", "unknown")
-        command = scan_file_result.get("command", "unknown")
+        tool_name = scan_file_result.tool_name
+        command = scan_file_result.command
+        scan_data = scan_file_result.data
+
         command_set.add(command)
-        scan_data = scan_file_result.get("data", {})
 
         for ip, host_info in scan_data.items():
             if ip not in merged_db:

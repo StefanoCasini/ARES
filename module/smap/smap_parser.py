@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from module.base_parser import BaseParser
+from module.dtos.ParsedDataDTO import ParsedDataDTO
 
 
 class SmapParser(BaseParser):
@@ -26,14 +27,14 @@ class SmapParser(BaseParser):
 
         pass
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = json.load(f)
         except Exception:
             # Return empty structure if file is corrupted or empty
-            return {"tool_name": "smap", "command": "", "data": {}}
+            return ParsedDataDTO(tool_name="smap", command="", data={})
         
         # 1. Extract Meta-Info
         command = content.get('command', 'unknown')
@@ -122,9 +123,5 @@ class SmapParser(BaseParser):
                 if tool_name not in existing_port_data["source"]:
                     existing_port_data["source"] += f", {tool_name}"
 
-        parsed_data = {
-            "tool_name": tool_name,
-            "command": command,
-            "data": data_dict
-        }
-        return parsed_data
+        parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
+        return parsed_data_dto

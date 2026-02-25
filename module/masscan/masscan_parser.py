@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from module.base_parser import BaseParser
+from module.dtos.ParsedDataDTO import ParsedDataDTO
 
 
 class MasscanParser(BaseParser):
@@ -40,13 +41,13 @@ class MasscanParser(BaseParser):
             return False
         return False
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = json.load(f)
         except Exception:
             # Return empty structure if file is corrupted or empty
-            return {"tool_name": "masscan", "command": "", "data": {}}
+            return ParsedDataDTO(tool_name="masscan", command="", data={})
         
         # 1. Extract Meta-Info
         command = content.get('command', 'unknown')
@@ -115,9 +116,5 @@ class MasscanParser(BaseParser):
                 if tool_name not in existing_port_data["source"]:
                     existing_port_data["source"] += f", {tool_name}"
 
-        parsed_data = {
-            "tool_name": tool_name,
-            "command": command,
-            "data": data_dict
-        }
-        return parsed_data
+        parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
+        return parsed_data_dto

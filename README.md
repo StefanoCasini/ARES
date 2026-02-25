@@ -296,7 +296,7 @@ class MasscanParser(BaseParser):
             return False
         return False
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = json.load(f)

@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
-from collections import defaultdict
 from pathlib import Path
 from module.base_parser import BaseParser
+from module.dtos.ParsedDataDTO import ParsedDataDTO 
 
 
 class NmapParser(BaseParser):
@@ -35,14 +35,14 @@ class NmapParser(BaseParser):
             
         return False
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         try:
             tree = ET.parse(file_path)
             root = tree.getroot()
         except Exception:
             # Return empty structure if file is corrupted or empty
-            return {"tool_name": "nmap", "command": "", "data": {}}
-        
+            return ParsedDataDTO(tool_name="nmap", command="", data={})
+
         # 1. Extract Meta-Info
         command = root.get('args', 'unknown')
         tool_name = "nmap"
@@ -120,5 +120,5 @@ class NmapParser(BaseParser):
 
             data_dict[ip] = host_record
 
-        parsed_data = {"tool_name": tool_name, "command": command, "data": data_dict}
-        return parsed_data
+        parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
+        return parsed_data_dto
