@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
+from module.dtos.HostDTO import HostDTO
+
 
 @dataclass
 class ParsedDataDTO:
@@ -11,9 +13,7 @@ class ParsedDataDTO:
     command: str
 
     # 'data' maps the IP address (str) to the host's parsed information.
-    # We use 'Any' for now until we build the HostDTO for the inner layer.
-    #TODO: replace Any with HostDTO once we have it defined. 
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: Dict[str, HostDTO] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {

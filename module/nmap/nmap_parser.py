@@ -1,7 +1,9 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from module.base_parser import BaseParser
-from module.dtos.ParsedDataDTO import ParsedDataDTO 
+from module.dtos.HostDTO import HostDTO
+from module.dtos.ParsedDataDTO import ParsedDataDTO
+from module.dtos.PortDTO import PortDTO 
 
 
 class NmapParser(BaseParser):
@@ -50,26 +52,25 @@ class NmapParser(BaseParser):
         data_dict = {}
         
         for host in root.findall("host"):
+            # Some struct to get information about the host, we will convert to HostDTO at the end of this loop
+            ip = None
+            host_ports = {}
+            cpes = []
+            os_list = []
+            hostnames = []
+
             status = host.find("status")
             if status is None or status.get("state") != "up":
                 continue
 
-            # Get IP
-            ip = None
+            # Extract IP Address
             for addr in host.findall("address"):
                 if addr.get("addrtype") == "ipv4":
                     ip = addr.get("addr")
                     break
-            
+
             if not ip: continue
 
-            host_record = {
-                "ports": {},
-                "hostnames": [],
-                "os": [],
-                "cpes": []
-            }
-            
             # --- Extract Ports & Service CPEs ---
             ports_elem = host.find("ports")
             if ports_elem:
@@ -77,48 +78,51 @@ class NmapParser(BaseParser):
                     port_id = port.get("portid")
                     protocol = port.get("protocol")
                     key = f"{port_id}/{protocol}"
-                    
+
                     state = port.find("state")
                     if state is not None and state.get("state") == "open":
                         service = port.find("service")
                         service_name = service.get("name") if service is not None else "unknown"
                         banner = service.get("product") if service is not None else ""
-                        
-                        host_record["ports"][key] = {
-                            "state": "open",
-                            "service": service_name,
-                            "banner": banner,
-                            "source": tool_name
-                        }
-                        
+
+                        host_ports[key] = PortDTO(
+                            port=key,
+                            state="open",
+                            service=service_name,
+                            banner=banner,
+                            source=tool_name,
+                            ttl=None,
+                            reason=None
+                        )
+
                         # Grab CPE from the Service (e.g. cpe:/a:apache:http_server)
                         if service is not None:
                             for cpe in service.findall("cpe"):
-                                if cpe.text and cpe.text not in host_record["cpes"]:
-                                    host_record["cpes"].append(cpe.text)
+                                if cpe.text and cpe.text not in cpes:
+                                    cpes.append(cpe.text)
 
             # --- Extract Hostnames ---
             hostnames_elem = host.find("hostnames")
             if hostnames_elem:
                 for hn in hostnames_elem.findall("hostname"):
                     name = hn.get("name")
-                    if name: host_record["hostnames"].append(name)
+                    if name: hostnames.append(name)
 
             # --- Extract OS & OS CPEs ---
             os_elem = host.find("os")
             if os_elem:
                 for os_match in os_elem.findall("osmatch"):
                     # Get OS Name
-                    if os_match.get("name") and os_match.get("name") not in host_record["os"]:
-                        host_record["os"].append(os_match.get("name"))
+                    if os_match.get("name") and os_match.get("name") not in os_list:
+                        os_list.append(os_match.get("name"))
                     
                     # Get OS CPEs (e.g. cpe:/o:linux:linux_kernel)
                     for os_class in os_match.findall("osclass"):
                         for cpe in os_class.findall("cpe"):
-                            if cpe.text and cpe.text not in host_record["cpes"]:
-                                host_record["cpes"].append(cpe.text)
+                            if cpe.text and cpe.text not in cpes:
+                                cpes.append(cpe.text)
 
-            data_dict[ip] = host_record
+            data_dict[ip] = HostDTO(ip=ip, ports=host_ports, hostnames=hostnames, os=os_list, cpes=cpes)
 
         parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
         return parsed_data_dto

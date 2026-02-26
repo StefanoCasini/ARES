@@ -24,7 +24,7 @@ mode:
         outputpath: "nmap_hostonly.xml"
         custom_option: ""
       - name: toptcpport
-        enable: true
+        enable: false
         description: "Top TCP ports scan"
         flags: "-sS --top-ports "
         outputpath: "nmap_top_tcp_ports.xml"
@@ -85,7 +85,7 @@ mode:
 
       # --- INTELLIGENCE MODES (Rich Data) ---
       - name: banner-grabber
-        enable: true
+        enable: false
         description: "INFO: Connects to open ports to grab service versions"
         # --banners establishes a TCP connection (3-way handshake) unlike the default SYN scan.
         flags: "--top-ports --banners --rate 1000"
@@ -128,7 +128,7 @@ mode:
         outputpath: "smap_full_port.json"
         custom_option: ""
       - name: top-ports
-        enable: true
+        enable: false
         description: "Top TCP ports scan"
         flags: "--top-ports"
         outputpath: "smap_top_tcp_ports.json"

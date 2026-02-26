@@ -127,18 +127,19 @@ def merge_all(parser_results_list: list[ParsedDataDTO]):
             if command:
                 entry["commands"].add(command)
 
-            _merge_traked_field(entry["hostnames"], host_info.get("hostnames", {}), tool_name)
-            _merge_traked_field(entry["os_info"], host_info.get("os", []), tool_name)
-            _merge_traked_field(entry["cpes"], host_info.get("cpes", []), tool_name)
+            _merge_traked_field(entry["hostnames"], host_info.hostnames, tool_name)
+            _merge_traked_field(entry["os_info"], host_info.os, tool_name)
+            _merge_traked_field(entry["cpes"], host_info.cpes, tool_name)
 
             # TODO: Avoid port info duplication on the same tool
-            new_ports = host_info.get("ports", {}) 
+            new_ports = host_info.ports 
             for port_key, port_info in new_ports.items():
                 if port_key not in entry["ports"]:
                     entry["ports"][port_key] = []
                 
-                if "source" not in port_info:
-                    port_info["source"] = []
+                # TODO: we could remove this part because DTO has the source field
+                # if "source" not in port_info:
+                #     port_info.source = []
                 
                 _prune_weak_siblings(entry["ports"][port_key], port_info)
 
