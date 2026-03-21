@@ -7,7 +7,7 @@ output_report_path: "output"
 # SCAN MODE
 # --------------------------------
 mode:
-  enable_scan: true          # enable or disable the scanning phase
+  enable_scan: false          # enable or disable the scanning phase
   #target: "192.168.0.0/24" #"185.127.236.0/24" #from command line
   n_threads: 3 # to choose the number of parallel scans
   base_output_raw_path: "output/raw" # base path to store raw scan outputs
@@ -138,5 +138,13 @@ mode:
 # IMPORT FILE
 # --------------------------------
 import_files:
-  # - "output/raw/<timestamp>_<target>/nmap_top_tcp_ports.xml"  how to import example
-  # - "output/raw/<timestamp>_<target>/nmap_hostonly.xml"  how to import example
+  # - "/home/ste/Documents/ARES/output/raw/2026-02-25_2318_192.168.1.0_24/masscan_top_ports.json"
+  # - "/home/ste/Documents/ARES/output/raw/2026-02-25_2318_192.168.1.0_24/nmap_hostonly.xml"
+  # - "/home/ste/Documents/ARES/output/raw/2026-02-25_2318_192.168.1.0_24/smap_full_port.json"
+
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/masscan_top_ports.json"
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/masscan_banners.json"
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/nmap_hostonly.xml"
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/nmap_top_tcp_ports.xml"
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/smap_full_port.json"
+  - "/home/ste/Documents/SpectraScan/ares/output/raw/2026-01-22_2013_185.127.236.0_24/smap_top_tcp_ports.json"

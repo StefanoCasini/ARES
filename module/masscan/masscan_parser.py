@@ -64,10 +64,10 @@ class MasscanParser(BaseParser):
             if not ip:
                 continue
             if ip not in data_dict:
-                data_dict[ip] = HostDTO(ip=ip, ports={}, hostnames=[], os=[], cpes=[])
+                data_dict[ip] = HostDTO(ip=ip)
 
             host_record = data_dict[ip]
-            raw_ports = entry.get("ports", [])
+            raw_ports = entry.get("ports", {})
 
             for port_data in raw_ports:
                 port_id = str(port_data.get("port"))
@@ -82,7 +82,9 @@ class MasscanParser(BaseParser):
                         banner=None,
                         source=tool_name,
                         ttl = None,
-                        reason = None
+                        reason = None,
+                        cpes = None,
+                        command = command
                     )
 
                 existing_port_data = host_record.ports[key]
