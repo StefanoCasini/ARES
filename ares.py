@@ -66,7 +66,7 @@ def main():
     
     try:
         with open(output_file_name, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=4)
+            json.dump(report.to_dict(), f, indent=4)
         print(f"[+] Summary saved to: {output_file_name}")
     except Exception as e:
         print(f"[!] Error saving report: {e}")

@@ -8,6 +8,7 @@ command = "masscan test"
 sample_json_input = [
     { "ip": "10.10.10.1", "timestamp": "1768474998", "ports": [ {"port": 445, "proto": "tcp", "status": "open", "reason": "syn-ack", "ttl": 64} ] },
     { "ip": "10.10.10.1", "timestamp": "1768475000", "ports": [ {"port": 445, "proto": "tcp", "service": {"name": "smb", "banner": "SMBv2 guid=00..."} } ] },
+    { "ip": "10.10.10.1", "timestamp": "1768475002", "ports": [ {"port": 80, "proto": "tcp", "status": "open", "reason": "syn-ack", "ttl": 64} ] }
 ]
 
 file_data = {
@@ -30,22 +31,23 @@ try:
     print("--- TEST RESULTS ---\n")
 
     # CHECK 1: IP 10.10.10.1 Port 445
-    if '10.10.10.1' in result['data']:
-        p445 = result['data']['10.10.10.1']['ports']['445/tcp']
+    if '10.10.10.1' in result.data:
+        p445 = result.data['10.10.10.1'].ports['445/tcp']
         print(f"IP: 10.10.10.1 | Port: 445")
-        print(f"  > TTL (Expect 64): {p445.get('ttl')}")
-        print(f"  > Banner (Expect SMBv2...): {p445.get('banner')}")
+        print(f"  > TTL (Expect 64): {p445.ttl}")
+        print(f"  > Banner (Expect SMBv2...): {p445.banner}")
     else:
         print("ERROR: IP 10.10.10.1 not found in result!")
 
     print("-" * 30)
 
     # CHECK 2: IP 10.10.10.1 Port 80
-    if '10.10.10.1' in result['data']:
-        p177 = result['data']['10.10.10.1']['ports']
+    if '10.10.10.1' in result.data:
+        p177 = result.data['10.10.10.1'].ports
+        print(f"p177: {p177}")  # Debug print to see the structure of ports for IP
         print(f"IP: 10.10.10.1")
         print(f"  > Total entries for Port 80 (Expect 1): {len(p177)}")
-        print(f"  > State: {p177['80/tcp']['state']}")
+        print(f"  > State: {p177['80/tcp'].state}")
     else:
         print("ERROR: IP 10.10.10.1 not found in result!")
 

@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from module.dtos.ParsedDataDTO import ParsedDataDTO
+
 class BaseParser(ABC):
     
     @staticmethod
@@ -13,7 +15,7 @@ class BaseParser(ABC):
         pass
 
     @abstractmethod
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         """
         Parses the file and returns a standardized dictionary.
         """

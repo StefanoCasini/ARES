@@ -2,6 +2,7 @@ from pathlib import Path
 from module.nmap.nmap_parser import NmapParser
 from module.masscan.masscan_parser import MasscanParser
 from module.smap.smap_parser import SmapParser
+from module.dtos.ParsedDataDTO import ParsedDataDTO
 
 # PARSER_REGISTRY = {
 #     "parser_nmap": NmapParser,
@@ -28,7 +29,7 @@ def get_parser(file_path: Path):
             continue
     return None
 
-def parse_all_files(file_path_list: list):
+def parse_all_files(file_path_list: list) -> list[ParsedDataDTO]:
     print(f"\n--- 🔍 Parsing files ---")
     
     # Dictionary to store all parsed data
@@ -55,8 +56,8 @@ def parse_all_files(file_path_list: list):
                 # 3. Store result
                 if parsed_data:
                     aggregated_results.append(parsed_data)
-                    host_count = len(parsed_data.get("data", {}))
-                    tool = parsed_data.get("tool_name", "unknown")
+                    host_count = len(parsed_data.data) 
+                    tool = parsed_data.tool_name
                     print(f"   Parsed {host_count} hosts from {file_path.name} [{tool}] ")
                 
             except ValueError as e:

@@ -1,8 +1,8 @@
 import json
 import os
 
-from module.nmap.nmap_parser import parse_nmap_like_xml
 from module.nmap.nmap_utils import deep_merge_nmap_data
+import module.nmap.nmap_parser 
 
 def test_nmap_parser():
     n_threads = 2
@@ -21,7 +21,8 @@ def test_nmap_parser():
     nmap_scan_data = []
     for i in range(n_threads):
         nmap_scan_file = thread_option[i][1]
-        data = parse_nmap_like_xml(nmap_scan_file)
+        NmapParser = module.nmap.nmap_parser.NmapParser()
+        data = NmapParser.parse(nmap_scan_file)
         nmap_scan_data.append(data)  # xml_output paths
         
 

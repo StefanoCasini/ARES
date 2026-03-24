@@ -21,6 +21,7 @@ The core strength of A.R.E.S. lies in its **Data Fusion Engine**, which parses h
 - [Installation](#installation)
 - [Configuration (How to Start)](#configuration-how-to-start)
 - [Configuration Examples](#configuration-examples)
+- [DTOs](#dtos)
 - [Architecture & Extensibility](#architecture--extensibility)
 - [How to Extend](#how-to-extend-add-a-new-tool)
 
@@ -179,6 +180,48 @@ This profile focuses on detailed service versioning and script scanning. It uses
 
 ---
 
+## DTOs
+
+A.R.E.S. now uses **Data Transfer Objects (DTOs)** as the internal data model between parsers, merger, and report generation.  
+This keeps the data flow explicit and type-safe instead of passing unstructured dictionaries.
+
+### DTOs currently used
+
+- `ParsedDataDTO`: top-level parser output (`tool_name`, `command`, and parsed `data`).
+- `HostDTO`: host container (`ip`, `ports`, `hostnames`, `os`, `cpes`, `discovery_commands`).
+- `PortDTO`: port/service details (`port`, `state`, `service`, `banner`, `source`, `reason`, `ttl`, `cpes`, `command`).
+- `OsDTO`: OS guess metadata (`name`, `cpes`, `command`).
+- `FinalReportDTO`: final merged output (`total_hosts`, `commands`, `hosts`).
+
+### Example DTO flow
+
+```python
+from module.dtos.HostDTO import HostDTO
+from module.dtos.ParsedDataDTO import ParsedDataDTO
+from module.dtos.PortDTO import PortDTO
+
+host = HostDTO(ip="192.168.1.10")
+host.ports["22/tcp"] = PortDTO(
+    port="22/tcp",
+    state="open",
+    service="ssh",
+    banner="OpenSSH",
+    source="nmap",
+    ttl=None,
+    reason=None,
+    cpes=[],
+    command="nmap -sV 192.168.1.10"
+)
+
+result = ParsedDataDTO(
+    tool_name="nmap",
+    command="nmap -sV 192.168.1.10",
+    data={"192.168.1.10": host}
+)
+```
+
+---
+
 ## Architecture & Extensibility
 
 A.R.E.S. is built to be **modular and extensible**. The core logic is decoupled from specific tool implementations using the **Strategy Pattern**.
@@ -296,16 +339,14 @@ class MasscanParser(BaseParser):
             return False
         return False
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = json.load(f)
         except Exception:
-            # Return empty structure if file is corrupted or empty
-            return {"tool_name": "masscan", "command": "", "data": {}}
-        
-        # 1. Extract Meta-Info
-        command = content.get('command', 'unknown')
+            return ParsedDataDTO(tool_name="masscan", command="", data={})
+
+        command = content.get("command", "unknown")
         tool_name = "masscan"
         raw_data_list = content.get('data', [])  # assuming data is under 'data' key or is the root
 
@@ -316,12 +357,7 @@ class MasscanParser(BaseParser):
             if not ip:
                 continue
             if ip not in data_dict:
-                data_dict[ip] = {
-                    "ports": {},
-                    "hostnames": [],
-                    "os": [],
-                    "cpes": []
-                }
+                data_dict[ip] = HostDTO(ip=ip)
 
             host_record = data_dict[ip]
             raw_ports = entry.get("ports", [])
@@ -331,16 +367,20 @@ class MasscanParser(BaseParser):
                 protocol = port_data.get("proto", "tcp")
                 key = f"{port_id}/{protocol}"
 
-                if key not in host_record["ports"]:
-                    host_record["ports"][key] = {
-                        "state": "closed",
-                        "service": "unknown",
-                        "banner": None,
-                        "source": tool_name,
-                        "ttl": None,
-                        "reason": None
-                    }                
-                existing_port_data = host_record["ports"][key]
+                if key not in host_record.ports:
+                    host_record.ports[key] = PortDTO(
+                        port = key,
+                        state="closed",
+                        service="unknown",
+                        banner=None,
+                        source=tool_name,
+                        ttl = None,
+                        reason = None,
+                        cpes = None,
+                        command = command
+                    )
+
+                existing_port_data = host_record.ports[key]
 
                 # Extract new data
                 new_status = port_data.get("status", None)
@@ -358,30 +398,26 @@ class MasscanParser(BaseParser):
 
                 # Merge logic
                 if new_status and new_status == "open":
-                    existing_port_data["state"] = new_status
+                    existing_port_data.state = new_status
                 if new_ttl is not None:
-                    existing_port_data["ttl"] = new_ttl
+                    existing_port_data.ttl = new_ttl
                 if new_reason is not None:
-                    existing_port_data["reason"] = new_reason
+                    existing_port_data.reason = new_reason
                 if new_banner:
-                    existing_port_data["banner"] = new_banner
+                    existing_port_data.banner = new_banner
                 if new_service_name and new_service_name != "unknown":
-                    existing_port_data["service"] = new_service_name
+                    existing_port_data.service = new_service_name
                 
-                if tool_name not in existing_port_data["source"]:
-                    existing_port_data["source"] += f", {tool_name}"
+                if tool_name not in existing_port_data.source:
+                    existing_port_data.source += f", {tool_name}"
 
-        parsed_data = {
-            "tool_name": tool_name,
-            "command": command,
-            "data": data_dict
-        }
-        return parsed_data
+        parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
+        return parsed_data_dto
 
 ```
 
 ### 3. Register the Modules
-Finallydd your new generator classes to the `GENERATOR_REGISTRY` (found in `src/module/launcher.py`) and your parser class to the `PARSER_REGISTRY` (found in `src/module/parser.py`). This tells the orchestrator that the new tool exists and maps the name used in the config file to the correct classes.
+Finally, add your new generator classes to the `GENERATOR_REGISTRY` (found in `src/module/launcher.py`) and your parser class to the `PARSER_REGISTRY` (found in `src/module/parser.py`). This tells the orchestrator that the new tool exists and maps the name used in the config file to the correct classes.
 
 ```python 
 # Registry of available generator classes

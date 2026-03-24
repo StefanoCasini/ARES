@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 from module.base_parser import BaseParser
+from module.dtos.HostDTO import HostDTO
+from module.dtos.ParsedDataDTO import ParsedDataDTO
+from module.dtos.PortDTO import PortDTO
 
 
 class MasscanParser(BaseParser):
@@ -40,13 +43,13 @@ class MasscanParser(BaseParser):
             return False
         return False
 
-    def parse(self, file_path: Path) -> dict:
+    def parse(self, file_path: Path) -> ParsedDataDTO:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = json.load(f)
         except Exception:
             # Return empty structure if file is corrupted or empty
-            return {"tool_name": "masscan", "command": "", "data": {}}
+            return ParsedDataDTO(tool_name="masscan", command="", data={})
         
         # 1. Extract Meta-Info
         command = content.get('command', 'unknown')
@@ -57,34 +60,34 @@ class MasscanParser(BaseParser):
 
         for entry in raw_data_list:
             ip = entry.get("ip")
+
             if not ip:
                 continue
             if ip not in data_dict:
-                data_dict[ip] = {
-                    "ports": {},
-                    "hostnames": [],
-                    "os": [],
-                    "cpes": []
-                }
+                data_dict[ip] = HostDTO(ip=ip)
 
             host_record = data_dict[ip]
-            raw_ports = entry.get("ports", [])
+            raw_ports = entry.get("ports", {})
 
             for port_data in raw_ports:
                 port_id = str(port_data.get("port"))
                 protocol = port_data.get("proto", "tcp")
                 key = f"{port_id}/{protocol}"
 
-                if key not in host_record["ports"]:
-                    host_record["ports"][key] = {
-                        "state": "closed",
-                        "service": "unknown",
-                        "banner": None,
-                        "source": tool_name,
-                        "ttl": None,
-                        "reason": None
-                    }                
-                existing_port_data = host_record["ports"][key]
+                if key not in host_record.ports:
+                    host_record.ports[key] = PortDTO(
+                        port = key,
+                        state="closed",
+                        service="unknown",
+                        banner=None,
+                        source=tool_name,
+                        ttl = None,
+                        reason = None,
+                        cpes = None,
+                        command = command
+                    )
+
+                existing_port_data = host_record.ports[key]
 
                 # Extract new data
                 new_status = port_data.get("status", None)
@@ -102,22 +105,18 @@ class MasscanParser(BaseParser):
 
                 # Merge logic
                 if new_status and new_status == "open":
-                    existing_port_data["state"] = new_status
+                    existing_port_data.state = new_status
                 if new_ttl is not None:
-                    existing_port_data["ttl"] = new_ttl
+                    existing_port_data.ttl = new_ttl
                 if new_reason is not None:
-                    existing_port_data["reason"] = new_reason
+                    existing_port_data.reason = new_reason
                 if new_banner:
-                    existing_port_data["banner"] = new_banner
+                    existing_port_data.banner = new_banner
                 if new_service_name and new_service_name != "unknown":
-                    existing_port_data["service"] = new_service_name
+                    existing_port_data.service = new_service_name
                 
-                if tool_name not in existing_port_data["source"]:
-                    existing_port_data["source"] += f", {tool_name}"
+                if tool_name not in existing_port_data.source:
+                    existing_port_data.source += f", {tool_name}"
 
-        parsed_data = {
-            "tool_name": tool_name,
-            "command": command,
-            "data": data_dict
-        }
-        return parsed_data
+        parsed_data_dto = ParsedDataDTO(tool_name=tool_name, command=command, data=data_dict)
+        return parsed_data_dto
