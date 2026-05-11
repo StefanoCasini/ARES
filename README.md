@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="ARES_icon.png" alt="A.R.E.S. Logo" width="250">
+</div>
+
 # A.R.E.S. (Automated Reconnaissance & Enumeration System)
 
 > **A Modular Framework for Hybrid Network Discovery and Data Fusion**
