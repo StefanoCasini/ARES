@@ -12,6 +12,43 @@ from module.merger import merge_all
 from utils.permission import fix_ownership
 
 # --------------------------------------------
+# CORE PIPELINE
+# --------------------------------------------
+def run_core_pipeline(config_data, timestamp):
+    file_to_read = []
+    if config_data.get("mode", {}).get("enable_scan", True):
+        file_to_read = run_scanners(config_data, timestamp)
+
+    # Add imported files from config.yml
+    file_from_import = config_data.get("import_files", []) or []
+    if file_from_import:
+        file_to_read.extend(file_from_import)
+
+    # 4. Parse all files 
+    all_results = parse_all_files(file_to_read)
+
+    # 5. Merge Results
+    report = merge_all(all_results)
+
+    # 6. Save Merged Report
+    base_output_dir = Path(config_data.get("output_report_path", "output"))
+    
+    base_output_dir.mkdir(parents=True, exist_ok=True) 
+
+    target_clean = config_data["mode"]["target"].replace("/", "_")
+
+    output_file_name = f"{timestamp}_{target_clean}.json"
+    output_file_name = base_output_dir / output_file_name
+    
+    try:
+        with open(output_file_name, "w", encoding="utf-8") as f:
+            json.dump(report.to_dict(), f, indent=4)
+        return str(output_file_name)
+    except Exception as e:
+        print(f"[!] Error saving report: {e}")
+        return None
+
+# --------------------------------------------
 # MAIN EXECUTION
 # --------------------------------------------
 def main():
@@ -36,41 +73,15 @@ def main():
         print("[!] Critical: No target specified in config.yml or command line.")
         sys.exit(1)
 
-    # 3. Run Scanners (Launcher) And/Or Import Files
+    # 3. Generate Timestamp
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime("%Y-%m-%d_%H%M")
-    file_to_read = []
-    if config_data.get("mode", {}).get("enable_scan", True):
-        file_to_read = run_scanners(config_data, timestamp)
 
-    # Add imported files from config.yml
-    file_from_import = config_data.get("import_files", []) or []
-    if file_from_import is not []:
-        file_to_read.extend(file_from_import)
-
-    #4. Parse all files 
-    all_results = parse_all_files(file_to_read)
-
-    # 5. Merge Results
-    report = merge_all(all_results)
-
-    # 6. Save Merged Report
-    base_output_dir = Path(config_data.get("output_report_path", "output"))
+    # 4. Run Core Pipeline
+    output_file_name = run_core_pipeline(config_data, timestamp)
     
-    base_output_dir.mkdir(parents=True, exist_ok=True) 
-
-    target_clean = config_data["mode"]["target"].replace("/", "_")
-
-    output_file_name = f"{timestamp}_{target_clean}.json"
-    output_file_name = base_output_dir / output_file_name
-    
-    try:
-        with open(output_file_name, "w", encoding="utf-8") as f:
-            json.dump(report.to_dict(), f, indent=4)
+    if output_file_name:
         print(f"[+] Summary saved to: {output_file_name}")
-    except Exception as e:
-        print(f"[!] Error saving report: {e}")
-
 
 if __name__ == "__main__":
     main()

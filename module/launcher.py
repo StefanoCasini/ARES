@@ -6,6 +6,7 @@ from utils.permission import fix_ownership
 from utils.ui import TaskMonitor
 from pathlib import Path
 from rich.live import Live
+from api.state import GLOBAL_SCAN_STATE
 import xml.etree.ElementTree as ET
 import json
 import shlex
@@ -113,14 +114,24 @@ def execute_tasks(possible_tasks, nthreads):
     monitor = TaskMonitor()
     results = []
 
+    GLOBAL_SCAN_STATE["is_running"] = True
+    GLOBAL_SCAN_STATE["tasks"].clear() # Reset for a new scan
+
     # 1. Define the Wrapper Function
     # This runs INSIDE the thread. It updates the UI, then runs the command.
-    def task_wrapper(task_id, cmd, output_file, tool_name):
+    def task_wrapper(task_id, cmd, output_file, tool_name, target_display):
         # A. Signal that we have left the queue and entered the CPU
         monitor.update_task(task_id, status="running")
         
-        # B. Run the ACTUAL heavy lifting
-        return run_command_task(cmd, output_file, tool_name)
+        start_time = time.time()
+        GLOBAL_SCAN_STATE["tasks"][task_id]["status"] = "RUNNING"
+        
+        result = run_command_task(cmd, output_file, tool_name)
+
+        elapsed = time.time() - start_time
+        GLOBAL_SCAN_STATE["tasks"][task_id]["status"] = "DONE" if result["status"] == "success" else "ERROR"
+        GLOBAL_SCAN_STATE["tasks"][task_id]["duration"] = f"{elapsed:.2f}s"
+        return result
 
     with Live(monitor.generate_table(), refresh_per_second=4) as live:
         with ThreadPoolExecutor(max_workers=nthreads) as executor:
@@ -143,8 +154,17 @@ def execute_tasks(possible_tasks, nthreads):
                 # 1. Add row to UI as "Ready" (Grey) -> Register with Monitor (Status: Grey "Ready...")
                 monitor.add_task(task_id, tool_name, target_display, cmd)
 
+                # 2. PRE-REGISTER with Web State as "QUEUED"
+                GLOBAL_SCAN_STATE["tasks"][task_id] = {
+                    "tool": tool_name,
+                    "target": target_display,
+                    "status": "QUEUED", 
+                    "duration": "...",
+                    "command": cmd
+                }
+
                 # Submit to thread pool
-                future = executor.submit(task_wrapper, task_id, cmd, output_file, tool_name) 
+                future = executor.submit(task_wrapper, task_id, cmd, output_file, tool_name, target_display) 
                 # task_wrapper contains UI updates for the status of the command and the specific command to run
 
                 # Register with Monitor (Status: Grey "Ready...")
@@ -182,6 +202,7 @@ def execute_tasks(possible_tasks, nthreads):
                 # Refresh table immediately after a task finishes
                 live.update(monitor.generate_table())
         # print("--- All Tasks Completed ---")
+    GLOBAL_SCAN_STATE["is_running"] = False
     return results
 
 # ---------------------------------------------------------
